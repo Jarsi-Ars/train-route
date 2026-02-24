@@ -1,0 +1,48 @@
+version: '3.9'
+
+services:
+  nginx:
+    image: nginx:1.29.5-alpine3.23
+    container_name: nginx-train
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - php
+    restart: unless-stopped
+    networks:
+      - app_network
+
+  php:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      args:
+        IS_XDEBUG: ${IS_XDEBUG:-false}
+    container_name: php-train
+    volumes:
+      - ./docker/php/xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini
+      - ./:/var/www/html
+      - ~/.composer:/home/www/.composer
+    environment:
+      PHP_IDE_CONFIG: serverName=docker
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - app_network
+
+  redis:
+    image: redis:8.2.4-alpine3.22
+    container_name: redis-train
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge
